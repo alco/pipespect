@@ -6,13 +6,11 @@ defmodule Pipespect do
     end
   end
 
+  import Kernel, except: [{:|>, 2}]
   defmacro first |> rest do
     inspect = quote do: IO.inspect
     stages =
-      rest
-      |> Macro.unpipe
-      |> Enum.map(fn {x, _} -> x end)
-      |> Enum.intersperse(inspect)
+      Enum.intersperse(Enum.map(Macro.unpipe(rest), fn {x, _} -> x end), inspect)
     quote do
       unquote(first) |> unquote(rebuild_pipe(stages ++ [inspect]))
     end
