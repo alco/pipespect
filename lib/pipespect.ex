@@ -8,19 +8,20 @@ defmodule Pipespect do
 
   import Kernel, except: [{:|>, 2}]
   defmacro first |> rest do
-    inspect = quote do: IO.inspect
-    stages =
-      Enum.intersperse(Enum.map(Macro.unpipe(rest), fn {x, _} -> x end), inspect)
-    quote do
-      unquote(first) |> unquote(rebuild_pipe(stages ++ [inspect]))
-    end
+    inspect_fragment = quote do: IO.inspect
+    input_pipeline = Enum.map(Macro.unpipe(first) ++ Macro.unpipe(rest), fn {x, _} -> x end)
+    output_pipeline = Enum.intersperse(input_pipeline, inspect_fragment)
+    # We call List.delete_at below so that we don't inspect the first argument in the pipeline
+    rebuild_pipe(List.delete_at(output_pipeline, 1) ++ [inspect_fragment])
   end
 
-  defp rebuild_pipe([h]) do
-    h
+  @pipe_op {:., [], [Kernel, :|>]}
+
+  defp rebuild_pipe([result]) do
+    result
   end
 
-  defp rebuild_pipe([h|t]) do
-    {:|>, [], [h, rebuild_pipe(t)]}
+  defp rebuild_pipe([left, right | rest]) do
+    rebuild_pipe([{@pipe_op, [], [left, right]} | rest])
   end
 end
